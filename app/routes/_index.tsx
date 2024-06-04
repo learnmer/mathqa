@@ -1,31 +1,44 @@
 import React, { useRef } from "react";
 import { type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
-import ocr from "../../lib/ocr";
+import { ocr, solve } from "../../lib/gemini";
 import { useFetcher } from "@remix-run/react";
 import { Button } from "../../@/components/ui/button";
-import { Icons } from "../../components/Icon";
+import { Icons } from "../../@/components/ui/Icon";
 import { Input } from "../../@/components/ui/input";
 import { Label } from "../../@/components/ui/label";
-import { TypographyH1, TypographyH2, TypographyP } from "../../@/components/ui/typography";
+import {
+  TypographyH1,
+  TypographyH2,
+  TypographyP,
+} from "../../@/components/ui/typography";
+import Markdown from "react-markdown";
 
 export async function action({ request }: LoaderFunctionArgs) {
-  let formData;
-  try {
-    formData = await request.formData();
-  } catch (e) {
-    return "";
-  }
-  const data = formData.get("data")?.toString() as string;
-  const mimeType = formData.get("mimeType")?.toString() as string;
-  if (!data) return "";
+  const url = new URL(request.url);
+  const searchParams = new URLSearchParams(url.search);
+  const task = searchParams.get("task");
+  if (task === "ocr") {
+    const formData = await request.formData();
+    const data = formData.get("data")?.toString() as string;
+    const mimeType = formData.get("mimeType")?.toString() as string;
+    if (!data) return "";
 
-  const result = ocr({ inlineData: { data, mimeType } });
-  return result;
+    const result = await ocr({ inlineData: { data, mimeType } });
+    return result;
+  }
+  if (task === "solve") {
+    const formData = await request.formData();
+    const data = formData.get("problem") as string;
+    if (!data) return "";
+
+    const result = await solve(data);
+    return result;
+  }
 }
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Image to Text App" },
+    { title: "Math problem solver" },
     {
       name: "description",
       content: "Upload an image and extract text from it",
@@ -35,7 +48,8 @@ export const meta: MetaFunction = () => {
 
 export default function Index() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const fetcher = useFetcher();
+  const ocrFetcher = useFetcher();
+  const solveFetcher = useFetcher();
 
   const handleSubmit = async (event: React.ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,7 +64,10 @@ export default function Index() {
           const formData = new FormData();
           formData.append("data", imageText);
           formData.append("mimeType", file.type);
-          fetcher.submit(formData, { method: "POST" });
+          ocrFetcher.submit(formData, {
+            method: "POST",
+            action: "/?index=&_data=routes%2F_index&task=ocr",
+          });
         }
       };
       reader.readAsDataURL(file); // Converts file to base64 string
@@ -58,25 +75,64 @@ export default function Index() {
   };
 
   return (
-    <div className="font-sans m-10 grid gap-5">
-      <TypographyH1>Image to Text App</TypographyH1>
-      <form encType="multipart/form-data" onSubmit={handleSubmit}>
+    <div className="font-sans m-10 ">
+      <TypographyH1>Math Problem Solver</TypographyH1>
+      <form
+        encType="multipart/form-data"
+        onSubmit={handleSubmit}
+        className="mt-3"
+      >
         <div className="grid w-full max-w-sm items-center gap-1.5">
           <Label htmlFor="picture">Image</Label>
           <Input type="file" accept="image/*" ref={fileInputRef} name="image" />
         </div>
-        <Button type="submit" className="mt-3">Extract Text</Button>
+        <Button type="submit" className="mt-3">
+          Extract Text
+        </Button>
       </form>
-
-      {fetcher.state === "submitting" ? (
+      {ocrFetcher.state === "submitting" ? (
         <Icons.spinner className="h-10 w-10 animate-spin" />
       ) : (
-        (fetcher.data as string) && (
-          <div>
+        (ocrFetcher.data as string) && (
+          <div className="mt-3">
             <TypographyH2>Extracted Text:</TypographyH2>
-            <TypographyP className="whitespace-pre-wrap">{fetcher.data as string}</TypographyP>
+            <TypographyP className="whitespace-pre-wrap">
+              {ocrFetcher.data as string}
+            </TypographyP>
           </div>
         )
+      )}
+      {ocrFetcher.state !== "submitting" && (
+        <React.Fragment>
+          {(ocrFetcher.data as string) && (
+            <Button
+              className="mt-3"
+              onClick={() => {
+                solveFetcher.submit(
+                  { problem: ocrFetcher.data as string },
+                  {
+                    method: "POST",
+                    action: "/?index=&_data=routes%2F_index&task=solve",
+                  }
+                );
+              }}
+            >
+              Solve the problem
+            </Button>
+          )}
+          {solveFetcher.state === "submitting" ? (
+            <Icons.spinner className="h-10 w-10 animate-spin" />
+          ) : (
+            (solveFetcher.data as string) && (
+              <div className="mt-3">
+                <TypographyH2>Solution:</TypographyH2>
+                <TypographyP className="whitespace-pre-wrap">
+                  <Markdown>{solveFetcher.data as string}</Markdown>
+                </TypographyP>
+              </div>
+            )
+          )}
+        </React.Fragment>
       )}
     </div>
   );
