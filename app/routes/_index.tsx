@@ -1,6 +1,6 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
-import { ocr, solve } from "../../lib/gemini";
+import { ocr, solve } from "../lib/gemini";
 import { useFetcher } from "@remix-run/react";
 import { Button } from "../../@/components/ui/button";
 import { Icons } from "../../@/components/ui/Icon";
@@ -12,6 +12,7 @@ import {
   TypographyP,
 } from "../../@/components/ui/typography";
 import Markdown from "react-markdown";
+import ImageEditor from "../components/ImageEditor";
 
 export async function action({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -50,27 +51,36 @@ export default function Index() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const ocrFetcher = useFetcher();
   const solveFetcher = useFetcher();
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [editedImageDataUrl, setEditedImageDataUrl] = useState<string | null>(null);
 
-  const handleSubmit = async (event: React.ChangeEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (fileInputRef.current?.files?.[0]) {
-      const file = fileInputRef.current.files[0];
+  const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event?.target?.files?.[0]) {
+      const file = event.target.files[0];
       const reader = new FileReader();
       reader.onloadend = async () => {
         if (reader.result) {
-          // The result attribute contains the data URL as a base64 string
-          const imageText = reader.result.toString().split(",")[1];
-          const formData = new FormData();
-          formData.append("data", imageText);
-          formData.append("mimeType", file.type);
-          ocrFetcher.submit(formData, {
-            method: "POST",
-            action: "/?index=&_data=routes%2F_index&task=ocr",
-          });
+          // Store the data URL for displaying the image
+          setImageDataUrl(reader.result.toString());
+          setEditedImageDataUrl(reader.result.toString());
         }
       };
-      reader.readAsDataURL(file); // Converts file to base64 string
+      reader.readAsDataURL(file);
+    }
+  };
+  const handleSubmit = async (event: React.ChangeEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (editedImageDataUrl) {
+      const [dataDesc, imageText] = editedImageDataUrl.split(",");
+      // get the mimeType from something like data:image/png;base64
+      const mimeType = dataDesc.split(":")[1].split(";")[0];
+      const formData = new FormData();
+      formData.append("data", imageText);
+      formData.append("mimeType", mimeType);
+      ocrFetcher.submit(formData, {
+        method: "POST",
+        action: "/?index=&_data=routes%2F_index&task=ocr",
+      });
     }
   };
 
@@ -84,12 +94,21 @@ export default function Index() {
       >
         <div className="grid w-full max-w-sm items-center gap-1.5">
           <Label htmlFor="picture">Image</Label>
-          <Input type="file" accept="image/*" ref={fileInputRef} name="image" />
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleChange}
+            ref={fileInputRef}
+            name="image"
+          />
         </div>
         <Button type="submit" className="mt-3">
           Extract Text
         </Button>
       </form>
+      {imageDataUrl && (
+        <ImageEditor image={imageDataUrl} onChange={setEditedImageDataUrl} />
+      )}
       {ocrFetcher.state === "submitting" ? (
         <Icons.spinner className="h-10 w-10 animate-spin" />
       ) : (
