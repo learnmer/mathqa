@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import ReactCrop, { Crop } from "react-image-crop";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import ReactCrop, { Crop, PercentCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { Button } from "@/components/ui/button"; // Assuming you have a Button component
-import { TypographyP } from "../../@/components/ui/typography";
+import { Button } from "../../@/components/ui/button";
+import { Icons } from "../../@/components/ui/Icon";
 
 interface ImageEditorProps {
   image: string;
@@ -10,34 +10,47 @@ interface ImageEditorProps {
 }
 
 const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
-  const [crop, setCrop] = useState<Crop>({
-    unit: "%",
-    width: 100,
-    height: 100,
-    x: 0,
-    y: 0,
-  });
+  const cropFull = useMemo(
+    () => ({
+      unit: "%" as const,
+      width: 100,
+      height: 100,
+      x: 0,
+      y: 0,
+    }),
+    []
+  );
+  const [percentCrop, setPercentCrop] = useState<PercentCrop>(cropFull);
   const [rotation, setRotation] = useState(0);
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const originalImgRef = useRef<HTMLImageElement | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [rotatedImage, setRotatedImage] = useState(image);
+  const [firstRender, setFirstRender] = useState(true);
+  const [imageEditorKey, setImageEditorKey] = useState(0);
+  const [lastRotateDirection, setLastRotateDirection] = useState<
+    "left" | "right" | null
+  >(null);
 
   const getCroppedImg = useCallback(
     async (
       image: HTMLImageElement,
-      crop: Crop,
+      crop: PercentCrop,
       rotation: number
     ): Promise<string> => {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
-
       if (!ctx) {
         throw new Error("No 2d context");
       }
 
-      const cropWidth =
-        crop.unit === "%" ? (crop.width * image.width) / 100 : crop.width;
-      const cropHeight =
-        crop.unit === "%" ? (crop.height * image.height) / 100 : crop.height;
+      // Adjust crop for rotation
+      for (let i = 0; i < Math.abs(rotation / 90); i++) {
+        crop = rotateCrop(crop, "left");
+      }
+
+      const cropWidth = (crop.width * image.width) / 100;
+      const cropHeight = (crop.height * image.height) / 100;
 
       // Account for potential rotation dimensions
       const rotatedWidth = rotation % 180 === 0 ? cropWidth : cropHeight;
@@ -48,24 +61,26 @@ const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
       canvas.height = rotatedHeight;
 
       // Translate canvas and rotate around center
+      ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
       ctx.rotate((rotation * Math.PI) / 180);
-      ctx.translate(-cropWidth / 2, -cropHeight / 2);
 
-      // Clear the canvas before drawing the new image
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw the image in the center of the canvas, then adjust for cropping
       ctx.drawImage(
         image,
-        crop.x,
-        crop.y,
+        (crop.x * image.width) / 100,
+        (crop.y * image.height) / 100,
         cropWidth,
         cropHeight,
-        0,
-        0,
+        -cropWidth / 2,
+        -cropHeight / 2,
         cropWidth,
         cropHeight
       );
 
+      ctx.restore();
+
+      // Convert the canvas to a data URL
       return new Promise((resolve) => {
         canvas.toBlob((blob) => {
           if (blob) {
@@ -81,48 +96,104 @@ const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
     []
   );
 
-  const handleCropChange = (newCrop: Crop) => {
-    setCrop(newCrop);
+  const handleCropChange = (_newCrop: Crop, percentCrop: PercentCrop) => {
+    setPercentCrop(percentCrop);
   };
 
-  const handleRotateLeft = () => {
-    setRotation((prevRotation) => (prevRotation - 90 + 360) % 360);
-  };
+  const handleRotate = (direction: "left" | "right") => {
+    return () => {
+      const newRotation =
+        (rotation + (direction === "left" ? -90 : 90) + 360) % 360;
 
-  const handleRotateRight = () => {
-    setRotation((prevRotation) => (prevRotation + 90) % 360);
+      setRotation(newRotation);
+      setLastRotateDirection(direction);
+    };
   };
 
   useEffect(() => {
-    if (imgRef.current && onChange) {
+    if (onChange) {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
 
       debounceTimeoutRef.current = setTimeout(() => {
-        if (imgRef.current) {
-          getCroppedImg(imgRef.current, crop, rotation).then((newImage) => {
-            onChange(newImage);
-          });
+        if (originalImgRef.current) {
+          getCroppedImg(originalImgRef.current, percentCrop, rotation).then(
+            (newImage) => {
+              onChange(newImage);
+            }
+          );
         }
       }, 100);
     }
-  }, [crop, rotation, onChange, getCroppedImg]);
+  }, [percentCrop, rotation, onChange, getCroppedImg]);
+
+  function rotateCrop(
+    crop: PercentCrop,
+    direction: "left" | "right"
+  ): PercentCrop {
+    // if (!crop) return crop
+
+    const { x, y, width, height, unit } = crop;
+    return {
+      y: direction === "left" ? 100 - (x + width) : x,
+      x: direction === "left" ? y : 100 - (y + height),
+      width: height,
+      height: width,
+      unit,
+    };
+  }
+  useEffect(() => {
+    if (firstRender) {
+      setFirstRender(false);
+      return;
+    }
+    if (originalImgRef.current) {
+      getCroppedImg(originalImgRef.current, cropFull, rotation).then(
+        (newImage) => {
+          setRotatedImage(newImage);
+          if (imgRef.current && lastRotateDirection) {
+            const newCrop = rotateCrop(percentCrop, lastRotateDirection);
+            setPercentCrop(newCrop);
+          }
+        }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rotation]);
+
+  useEffect(() => {
+    setImageEditorKey(Number(!imageEditorKey));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rotatedImage]);
 
   return (
-    <div>
+    <div className="flex flex-col items-center">
+      {/* eslint-disable-next-line jsx-a11y/alt-text */}
+      <img src={image} ref={originalImgRef} className="hidden" />
       <ReactCrop
-        crop={crop}
+        crop={percentCrop}
         onChange={handleCropChange}
-        style={{ transform: `rotate(${rotation}deg)` }}
+        minWidth={50}
+        minHeight={50}
+        className="max-h-[75vh] h-auto max-w-full w-auto"
+        key={rotatedImage}
       >
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <img src={image} ref={imgRef} />
+        <img src={rotatedImage} key={rotatedImage} ref={imgRef} />
       </ReactCrop>
-      <div>
-        <TypographyP>Rotate:</TypographyP>
-        <Button onClick={handleRotateLeft}>Rotate Left</Button>
-        <Button onClick={handleRotateRight}>Rotate Right</Button>
+      <div className="flex justify-center mt-3">
+        <Button variant="outline" size="icon" onClick={handleRotate("left")}>
+          <Icons.rotateLeft className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="ml-2"
+          onClick={handleRotate("right")}
+        >
+          <Icons.rotateRight className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );
