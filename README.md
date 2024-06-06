@@ -2,6 +2,16 @@
 
 📖 See the [Remix docs](https://remix.run/docs) and the [Remix Vite docs](https://remix.run/docs/en/main/guides/vite) for details on supported features.
 
+## Docker
+
+```bash
+docker build . -t mathqa
+```
+
+```bash
+docker run -it -p 3000:3000 -e GEMINI_API_KEY=<YOUR_GEMINI_API_KEY> mathqa
+```
+
 ## Development
 
 Run the Vite dev server:
