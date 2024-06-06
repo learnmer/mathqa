@@ -6,7 +6,7 @@ import { Icons } from "../../@/components/ui/Icon";
 
 interface ImageEditorProps {
   image: string;
-  onChange?: (image: string) => void;
+  onChange?: (image: string, rotatedImage: string) => void;
 }
 
 const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
@@ -120,13 +120,13 @@ const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
         if (originalImgRef.current) {
           getCroppedImg(originalImgRef.current, percentCrop, rotation).then(
             (newImage) => {
-              onChange(newImage);
+              onChange(newImage, rotatedImage);
             }
           );
         }
       }, 100);
     }
-  }, [percentCrop, rotation, onChange, getCroppedImg]);
+  }, [percentCrop, rotation, onChange, getCroppedImg, rotatedImage]);
 
   function rotateCrop(
     crop: PercentCrop,
@@ -163,7 +163,9 @@ const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
   }, [rotation]);
 
   useEffect(() => {
-    setImageEditorKey(Number(!imageEditorKey));
+    setTimeout(() => {
+      setImageEditorKey(Number(!imageEditorKey));
+    }, 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rotatedImage]);
 
@@ -177,7 +179,7 @@ const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
         minWidth={50}
         minHeight={50}
         className="max-h-[75vh] h-auto max-w-full w-auto"
-        key={rotatedImage}
+        key={imageEditorKey}
       >
         {/* eslint-disable-next-line jsx-a11y/alt-text */}
         <img src={rotatedImage} key={rotatedImage} ref={imgRef} />
