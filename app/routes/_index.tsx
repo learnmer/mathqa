@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
 import { ocr, solve } from "../lib/gemini";
 import { useFetcher } from "@remix-run/react";
@@ -9,9 +9,8 @@ import { Label } from "../../@/components/ui/label";
 import {
   TypographyH1,
   TypographyH2,
-  TypographyP,
 } from "../../@/components/ui/typography";
-import Markdown from "react-markdown";
+// import Markdown from "react-markdown";
 import ImageEditor from "../components/ImageEditor";
 import {
   Dialog,
@@ -22,6 +21,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../@/components/ui/dialog";
+import { Textarea } from "../../@/components/ui/textarea";
+import AssistantMessage from "../components/AssistantMessage";
 
 export async function action({ request }: LoaderFunctionArgs) {
   const formData = await request.formData();
@@ -61,23 +62,26 @@ export default function Index() {
   const [editedImageDataUrl, setEditedImageDataUrl] = useState<string | null>(
     null
   );
+  const [text, setText] = useState<string>("");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event?.target?.files?.[0]) {
       const file = event.target.files[0];
       const reader = new FileReader();
-      reader.onloadend = async () => {
+      reader.onloadend = () => {
         if (reader.result) {
           // Store the data URL for displaying the image
           setImageDataUrl(reader.result.toString());
           setEditedImageDataUrl(reader.result.toString());
+          setDialogOpen(true);
         }
       };
       reader.readAsDataURL(file);
     }
   };
-  const handleSubmit = async (event: React.ChangeEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (event?: React.ChangeEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     if (editedImageDataUrl) {
       const [dataDesc, imageText] = editedImageDataUrl.split(",");
       // get the mimeType from something like data:image/png;base64
@@ -92,14 +96,16 @@ export default function Index() {
     }
   };
 
+  useEffect(() => {
+    if (ocrFetcher.data) {
+      setText(ocrFetcher.data as string);
+    }
+  }, [ocrFetcher.data]);
+
   return (
-    <div className="font-sans m-10">
+    <div className="font-sans m-10 flex flex-col items-center">
       <TypographyH1>Math Problem Solver</TypographyH1>
-      <form
-        encType="multipart/form-data"
-        onSubmit={handleSubmit}
-        className="mt-3"
-      >
+      <div className="mt-3 flex flex-col items-center">
         <div className="grid w-full max-w-sm items-center gap-1.5">
           <Label htmlFor="picture">Image</Label>
           <Input
@@ -114,8 +120,17 @@ export default function Index() {
         {imageDataUrl && (
           <div className="relative mt-3 w-fit">
             {/*eslint-disable-next-line jsx-a11y/img-redundant-alt*/}
-            <img src={imageDataUrl} alt="Uploaded Image" className="max-h-80" />
-            <Dialog>
+            <img src={imageDataUrl} alt="Uploaded Image" className="max-h-64" />
+            <Dialog
+              open={dialogOpen}
+              onOpenChange={(open) => {
+                if (open === false) {
+                  setEditedImageDataUrl(imageDataUrl);
+                  handleSubmit();
+                }
+                setDialogOpen(open);
+              }}
+            >
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
@@ -139,7 +154,12 @@ export default function Index() {
                   <DialogClose asChild>
                     <Button
                       type="submit"
-                      onClick={() => setImageDataUrl(editedImageDataUrl)}
+                      onClick={() => {
+                        setImageDataUrl(editedImageDataUrl);
+                        setTimeout(() => {
+                          handleSubmit();
+                        });
+                      }}
                       className="text-lg"
                     >
                       Save Image
@@ -148,7 +168,10 @@ export default function Index() {
                   <DialogClose asChild>
                     <Button
                       type="submit"
-                      onClick={() => setEditedImageDataUrl(imageDataUrl)}
+                      onClick={() => {
+                        setEditedImageDataUrl(imageDataUrl);
+                        handleSubmit();
+                      }}
                       className="text-lg"
                       variant="secondary"
                     >
@@ -160,48 +183,47 @@ export default function Index() {
             </Dialog>
           </div>
         )}
-        <Button type="submit" className="mt-3">
-          Extract Text
-        </Button>
-      </form>
-      {ocrFetcher.state === "submitting" ? (
-        <Icons.spinner className="h-10 w-10 animate-spin" />
-      ) : (
-        (ocrFetcher.data as string) && (
-          <div className="mt-3">
-            <TypographyH2>Extracted Text:</TypographyH2>
-            <TypographyP className="whitespace-pre-wrap">
-              {ocrFetcher.data as string}
-            </TypographyP>
+      </div>
+      <div className="relative flex justify-center">
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          disabled={ocrFetcher.state === "submitting"}
+          className="mt-3 sm:w-[600px] w-full h-40"
+          placeholder="Enter the problem here"
+        />
+        {ocrFetcher.state === "submitting" && (
+          <div className="absolute top-1/4 left-1/2">
+            <Icons.spinner className="h-10 w-10 animate-spin" />
           </div>
-        )
-      )}
+        )}
+        <Button
+          variant="default"
+          size="sm"
+          className="absolute bottom-2 right-2"
+          disabled={!text}
+          onClick={() => {
+            solveFetcher.submit(
+              { problem: text, task: "solve" },
+              {
+                method: "POST",
+              }
+            );
+          }}
+        >
+          <Icons.send className="mr-2 h-4 w-4" />
+          Ask
+        </Button>
+      </div>
       {ocrFetcher.state !== "submitting" && (
         <React.Fragment>
-          {(ocrFetcher.data as string) && (
-            <Button
-              className="mt-3"
-              onClick={() => {
-                solveFetcher.submit(
-                  { problem: ocrFetcher.data as string, task: "solve" },
-                  {
-                    method: "POST",
-                  }
-                );
-              }}
-            >
-              Solve the problem
-            </Button>
-          )}
           {solveFetcher.state === "submitting" ? (
             <Icons.spinner className="h-10 w-10 animate-spin" />
           ) : (
             (solveFetcher.data as string) && (
               <div className="mt-3">
                 <TypographyH2>Solution:</TypographyH2>
-                <TypographyP className="whitespace-pre-wrap">
-                  <Markdown>{solveFetcher.data as string}</Markdown>
-                </TypographyP>
+                <AssistantMessage>{solveFetcher.data as string}</AssistantMessage>
               </div>
             )
           )}
