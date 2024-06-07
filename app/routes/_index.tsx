@@ -42,7 +42,7 @@ export async function action({ request }: LoaderFunctionArgs) {
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "Math problem solver" },
+    { title: "Learnmer MathQA" },
     {
       name: "description",
       content: "Upload an image and extract text from it",
@@ -118,7 +118,7 @@ export default function Index() {
 
   return (
     <div className="font-sans m-10 flex flex-col items-center">
-      <TypographyH1>Math Problem Solver</TypographyH1>
+      <TypographyH1>Learnmer MathQA</TypographyH1>
       <div className="relative flex justify-center sm:w-[600px] w-full">
         <Textarea
           value={text}
@@ -205,7 +205,7 @@ export default function Index() {
                 <img
                   src={imageDataUrl}
                   alt="Uploaded Image"
-                  className="max-h-52 max-w-64 border-orange-300 border-2 rounded-lg"
+                  className="sm:max-h-52 sm:max-w-64 max-h-32 max-w-48 border-orange-300 border-2 rounded-lg"
                   // show the image editor when clicked
                 />
               </a>
