@@ -6,10 +6,7 @@ import { Button } from "../../@/components/ui/button";
 import { Icons } from "../../@/components/ui/Icon";
 import { Input } from "../../@/components/ui/input";
 import { Label } from "../../@/components/ui/label";
-import {
-  TypographyH1,
-  TypographyH2,
-} from "../../@/components/ui/typography";
+import { TypographyH1, TypographyH2 } from "../../@/components/ui/typography";
 // import Markdown from "react-markdown";
 import ImageEditor from "../components/ImageEditor";
 import {
@@ -33,7 +30,7 @@ export async function action({ request }: LoaderFunctionArgs) {
     if (!data) return "";
 
     const result = await ocr({ inlineData: { data, mimeType } });
-    return result;
+    return { result, data };
   }
   if (task === "solve") {
     const data = formData.get("problem") as string;
@@ -56,14 +53,16 @@ export const meta: MetaFunction = () => {
 
 export default function Index() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const ocrFetcher = useFetcher();
-  const solveFetcher = useFetcher();
+  const ocrFetcher = useFetcher<{result: string, data: string}>();
+  const solveFetcher = useFetcher<string>();
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [editedImageDataUrl, setEditedImageDataUrl] = useState<string | null>(
     null
   );
   const [text, setText] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const editorSendButtonRef = useRef<HTMLButtonElement | null>(null);
+  const editorImageDivRef = useRef<HTMLDivElement | null>(null);
 
   const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event?.target?.files?.[0]) {
@@ -97,10 +96,10 @@ export default function Index() {
   };
 
   useEffect(() => {
-    if (ocrFetcher.data) {
-      setText(ocrFetcher.data as string);
+    if (ocrFetcher.data?.result) {
+      setText(ocrFetcher.data.result);
     }
-  }, [ocrFetcher.data]);
+  }, [ocrFetcher.data?.result]);
 
   return (
     <div className="font-sans m-10 flex flex-col items-center">
@@ -116,84 +115,22 @@ export default function Index() {
             name="image"
           />
         </div>
-
-        {imageDataUrl && (
-          <div className="relative mt-3 w-fit">
-            {/*eslint-disable-next-line jsx-a11y/img-redundant-alt*/}
-            <img src={imageDataUrl} alt="Uploaded Image" className="max-h-64" />
-            <Dialog
-              open={dialogOpen}
-              onOpenChange={(open) => {
-                if (open === false) {
-                  setEditedImageDataUrl(imageDataUrl);
-                  handleSubmit();
-                }
-                setDialogOpen(open);
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="absolute bottom-2 right-2"
-                >
-                  <Icons.edit className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[800px] max-h-[100vh] overflow-auto">
-                <DialogHeader>
-                  <DialogTitle>Edit Image</DialogTitle>
-                </DialogHeader>
-                <div className="max-h-full">
-                  <ImageEditor
-                    image={imageDataUrl}
-                    onChange={setEditedImageDataUrl}
-                  />
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button
-                      type="submit"
-                      onClick={() => {
-                        setImageDataUrl(editedImageDataUrl);
-                        setTimeout(() => {
-                          handleSubmit();
-                        });
-                      }}
-                      className="text-lg"
-                    >
-                      Save Image
-                    </Button>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Button
-                      type="submit"
-                      onClick={() => {
-                        setEditedImageDataUrl(imageDataUrl);
-                        handleSubmit();
-                      }}
-                      className="text-lg"
-                      variant="secondary"
-                    >
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
       </div>
-      <div className="relative flex justify-center">
+      <div className="relative flex justify-center sm:w-[600px] w-full">
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={ocrFetcher.state === "submitting"}
-          className="mt-3 sm:w-[600px] w-full h-40"
+          className="mt-3 h-40"
           placeholder="Enter the problem here"
+          minRows={6}
+          addheight={Math.max(
+            editorImageDivRef.current?.clientHeight || 0,
+            editorSendButtonRef.current?.clientHeight || 0,
+          ) + 10}
         />
         {ocrFetcher.state === "submitting" && (
-          <div className="absolute top-1/4 left-1/2">
+          <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
             <Icons.spinner className="h-10 w-10 animate-spin" />
           </div>
         )}
@@ -201,7 +138,8 @@ export default function Index() {
           variant="default"
           size="sm"
           className="absolute bottom-2 right-2"
-          disabled={!text}
+          disabled={!text || ocrFetcher.state === "submitting"}
+          ref={editorSendButtonRef}
           onClick={() => {
             solveFetcher.submit(
               { problem: text, task: "solve" },
@@ -214,6 +152,89 @@ export default function Index() {
           <Icons.send className="mr-2 h-4 w-4" />
           Ask
         </Button>
+        {imageDataUrl && (
+          <div ref={editorImageDivRef} className="absolute bottom-2 left-2">
+            <div className="relative mt-3 w-fit">
+              <a
+                href="#image"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setDialogOpen(true);
+                }}
+              >
+                {/*eslint-disable-next-line jsx-a11y/img-redundant-alt*/}
+                <img
+                  src={imageDataUrl}
+                  alt="Uploaded Image"
+                  className="max-h-40 max-w-52 border-orange-300 border-2 rounded-lg"
+                  // show the image editor when clicked
+                />
+              </a>
+              <Dialog
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                  if (open === false) {
+                    setEditedImageDataUrl(imageDataUrl);
+                    if (!ocrFetcher.data || ocrFetcher.data?.data !== imageDataUrl.split(",")[1]) {
+                      handleSubmit();
+                    }
+                  }
+                  setDialogOpen(open);
+                }}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute bottom-0 right-0 h-8 w-8"
+                  >
+                    <Icons.edit className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[800px] max-h-[100vh] overflow-auto">
+                  <DialogHeader>
+                    <DialogTitle>Edit Image</DialogTitle>
+                  </DialogHeader>
+                  <div className="max-h-full">
+                    <ImageEditor
+                      image={imageDataUrl}
+                      onChange={setEditedImageDataUrl}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button
+                        type="submit"
+                        onClick={() => {
+                          setImageDataUrl(editedImageDataUrl);
+                          setTimeout(() => {
+                            handleSubmit();
+                          });
+                        }}
+                        className="text-lg"
+                      >
+                        Save Image
+                      </Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                      <Button
+                        type="submit"
+                        onClick={() => {
+                          setEditedImageDataUrl(imageDataUrl);
+                          // handleSubmit();
+                        }}
+                        className="text-lg"
+                        variant="secondary"
+                      >
+                        Cancel
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        )}
       </div>
       {ocrFetcher.state !== "submitting" && (
         <React.Fragment>
@@ -223,7 +244,9 @@ export default function Index() {
             (solveFetcher.data as string) && (
               <div className="mt-3">
                 <TypographyH2>Solution:</TypographyH2>
-                <AssistantMessage>{solveFetcher.data as string}</AssistantMessage>
+                <AssistantMessage>
+                  {solveFetcher.data as string}
+                </AssistantMessage>
               </div>
             )
           )}
