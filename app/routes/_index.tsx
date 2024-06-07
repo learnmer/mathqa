@@ -30,7 +30,7 @@ export async function action({ request }: LoaderFunctionArgs) {
     if (!data) return "";
 
     const result = await ocr({ inlineData: { data, mimeType } });
-    return { result, data };
+    return result;
   }
   if (task === "solve") {
     const data = formData.get("problem") as string;
@@ -53,14 +53,16 @@ export const meta: MetaFunction = () => {
 
 export default function Index() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const ocrFetcher = useFetcher<{result: string, data: string}>();
-  const solveFetcher = useFetcher<string>();
+  const ocrFetcher = useFetcher<string>({ key: "ocr" });
+  const solveFetcher = useFetcher<string>({ key: "solve" });
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [editedImageDataUrl, setEditedImageDataUrl] = useState<string | null>(
     null
   );
   const [text, setText] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [reRender, setReRender] = useState(false);
+  const [isNewUpload, setIsNewUpload] = useState(false);
   const editorSendButtonRef = useRef<HTMLButtonElement | null>(null);
   const editorImageDivRef = useRef<HTMLDivElement | null>(null);
 
@@ -74,6 +76,11 @@ export default function Index() {
           setImageDataUrl(reader.result.toString());
           setEditedImageDataUrl(reader.result.toString());
           setDialogOpen(true);
+          setIsNewUpload(true);
+          // clear all files
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -96,10 +103,17 @@ export default function Index() {
   };
 
   useEffect(() => {
-    if (ocrFetcher.data?.result) {
-      setText(ocrFetcher.data.result);
+    if (ocrFetcher.data) {
+      setText(ocrFetcher.data);
     }
-  }, [ocrFetcher.data?.result]);
+  }, [ocrFetcher.data]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setReRender(!reRender);
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageDataUrl]);
 
   return (
     <div className="font-sans m-10 flex flex-col items-center">
@@ -124,10 +138,12 @@ export default function Index() {
           className="mt-3 h-40"
           placeholder="Enter the problem here"
           minRows={6}
-          addheight={Math.max(
-            editorImageDivRef.current?.clientHeight || 0,
-            editorSendButtonRef.current?.clientHeight || 0,
-          ) + 10}
+          addheight={
+            Math.max(
+              editorImageDivRef.current?.clientHeight || 0,
+              editorSendButtonRef.current?.clientHeight || 0
+            ) + 10
+          }
         />
         {ocrFetcher.state === "submitting" && (
           <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -153,7 +169,7 @@ export default function Index() {
           Ask
         </Button>
         {imageDataUrl && (
-          <div ref={editorImageDivRef} className="absolute bottom-2 left-2">
+          <div ref={editorImageDivRef} className="absolute bottom-3 left-3">
             <div className="relative mt-3 w-fit">
               <a
                 href="#image"
@@ -170,13 +186,29 @@ export default function Index() {
                   // show the image editor when clicked
                 />
               </a>
+              {/** add a button to remove the image */}
+              <Button
+                size="icon"
+                className="absolute -top-2 -right-2 h-8 w-8 rounded-full"
+                variant="secondary"
+                onClick={() => {
+                  setImageDataUrl(null);
+                  setEditedImageDataUrl(null);
+                  // setText("");
+                  // ocrFetcher.submit({ task: "ocr" }, { method: "POST" });
+                  // solveFetcher.submit({ task: "solve" }, { method: "POST" });
+                }}
+              >
+                <Icons.x className="h-4 w-4" />
+              </Button>
               <Dialog
                 open={dialogOpen}
                 onOpenChange={(open) => {
                   if (open === false) {
                     setEditedImageDataUrl(imageDataUrl);
-                    if (!ocrFetcher.data || ocrFetcher.data?.data !== imageDataUrl.split(",")[1]) {
+                    if (isNewUpload) {
                       handleSubmit();
+                      setIsNewUpload(false);
                     }
                   }
                   setDialogOpen(open);
@@ -186,7 +218,7 @@ export default function Index() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute bottom-0 right-0 h-8 w-8"
+                    className="absolute -bottom-2 -right-2 h-8 w-8"
                   >
                     <Icons.edit className="h-4 w-4" />
                   </Button>
@@ -209,6 +241,7 @@ export default function Index() {
                           setImageDataUrl(editedImageDataUrl);
                           setTimeout(() => {
                             handleSubmit();
+                            setIsNewUpload(false);
                           });
                         }}
                         className="text-lg"
@@ -219,10 +252,6 @@ export default function Index() {
                     <DialogClose asChild>
                       <Button
                         type="submit"
-                        onClick={() => {
-                          setEditedImageDataUrl(imageDataUrl);
-                          // handleSubmit();
-                        }}
                         className="text-lg"
                         variant="secondary"
                       >
