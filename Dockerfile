@@ -13,7 +13,7 @@ RUN yarn install
 COPY ./app ./app
 COPY ./@ ./@
 COPY ./public ./public
-COPY *.json *.js *.ts ./
+COPY *.json *.js *.ts *.patch ./
 
 # Build the Remix application
 RUN yarn build
