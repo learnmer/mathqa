@@ -22,9 +22,15 @@ export async function ocr(image: ImageGenerativePart) {
 }
 
 export async function solve(problem: string) {
-    const result = await model.generateContent(["Solve this math problem. Use katex for all math expressions (enclosed with $$):", problem]);
+    const result = await model.generateContent(["Solve this math problem. Use katex for all math expressions (enclosed with double dollar signs, $$, NEVER USE single $). Each = sth must be on a separate line. You should never say you are using latex/katex. Try to be more verbose and explain how to solve it.", problem]);
 
     const text = result.response.text();
 
     return text;
+}
+
+export async function solveStream(problem: string) {
+    const result = await model.generateContentStream(["Solve this math problem. Use katex for all math expressions (enclosed with double dollar signs, $$, NEVER USE single $). Each = sth must be on a separate line. You should never say you are using latex/katex. Try to be more verbose and explain how to solve it.", problem]);
+
+    return result.stream;
 }

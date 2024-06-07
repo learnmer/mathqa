@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+mjx-container {
+  display: inline-block;
+  overflow: auto;
+  max-width: 100%;
+  vertical-align: middle;
+}
+

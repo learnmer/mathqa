@@ -4,7 +4,7 @@ import { ocr, solve } from "../lib/gemini";
 import { useFetcher } from "@remix-run/react";
 import { Button } from "../../@/components/ui/button";
 import { Icons } from "../../@/components/ui/Icon";
-import { TypographyH1, TypographyH2 } from "../../@/components/ui/typography";
+import { TypographyH1 } from "../../@/components/ui/typography";
 // import Markdown from "react-markdown";
 import ImageEditor from "../components/ImageEditor";
 import {
@@ -18,6 +18,7 @@ import {
 } from "../../@/components/ui/dialog";
 import { Textarea } from "../../@/components/ui/textarea";
 import AssistantMessage from "../components/AssistantMessage";
+import { SSE } from "sse.js";
 
 export async function action({ request }: LoaderFunctionArgs) {
   const formData = await request.formData();
@@ -52,15 +53,16 @@ export const meta: MetaFunction = () => {
 export default function Index() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const ocrFetcher = useFetcher<string>({ key: "ocr" });
-  const solveFetcher = useFetcher<string>({ key: "solve" });
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [editedImageDataUrl, setEditedImageDataUrl] = useState<string | null>(
     null
   );
   const [text, setText] = useState<string>("");
+  const [response, setResponse] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reRender, setReRender] = useState(false);
   const [isNewUpload, setIsNewUpload] = useState(false);
+  const [typing, setTyping] = useState(false);
   const editorSendButtonRef = useRef<HTMLButtonElement | null>(null);
   const editorUploadButtonRef = useRef<HTMLButtonElement | null>(null);
   const editorImageDivRef = useRef<HTMLDivElement | null>(null);
@@ -145,12 +147,22 @@ export default function Index() {
           disabled={!text || ocrFetcher.state === "submitting"}
           ref={editorSendButtonRef}
           onClick={() => {
-            solveFetcher.submit(
-              { problem: text, task: "solve" },
-              {
-                method: "POST",
-              }
-            );
+            const sse = new SSE(`/solve?problem=${encodeURIComponent(text)}`, {
+              start: false,
+            });
+            let response = "";
+            setResponse("");
+            sse.addEventListener("close", () => {
+              sse.close();
+              setTyping(false);
+            });
+            sse.onmessage = (event) => {
+              response += JSON.parse(event.data);
+              setResponse(response);
+            };
+
+            sse.stream();
+            setTyping(true);
           }}
         >
           <Icons.send className="mr-2 h-4 w-4" />
@@ -181,7 +193,7 @@ export default function Index() {
         )}
         {imageDataUrl && (
           <div ref={editorImageDivRef} className="absolute bottom-3 left-3">
-            <div className="relative mt-3 w-fit">
+            <div className="relative mt-3 w-fit min-h-12 flex items-center">
               <a
                 href="#image"
                 onClick={(e) => {
@@ -193,7 +205,7 @@ export default function Index() {
                 <img
                   src={imageDataUrl}
                   alt="Uploaded Image"
-                  className="max-h-40 max-w-52 border-orange-300 border-2 rounded-lg"
+                  className="max-h-52 max-w-64 border-orange-300 border-2 rounded-lg"
                   // show the image editor when clicked
                 />
               </a>
@@ -229,7 +241,7 @@ export default function Index() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute -bottom-2 -right-2 h-8 w-8"
+                    className="absolute -bottom-2 -right-2 h-7 w-7"
                   >
                     <Icons.edit className="h-4 w-4" />
                   </Button>
@@ -276,21 +288,10 @@ export default function Index() {
           </div>
         )}
       </div>
-      {ocrFetcher.state !== "submitting" && (
-        <React.Fragment>
-          {solveFetcher.state === "submitting" ? (
-            <Icons.spinner className="h-10 w-10 animate-spin" />
-          ) : (
-            (solveFetcher.data as string) && (
-              <div className="mt-3">
-                <TypographyH2>Solution:</TypographyH2>
-                <AssistantMessage>
-                  {solveFetcher.data as string}
-                </AssistantMessage>
-              </div>
-            )
-          )}
-        </React.Fragment>
+      {response && (
+        <div className="mt-3 sm:w-[600px] w-full">
+          <AssistantMessage typing={typing}>{response}</AssistantMessage>
+        </div>
       )}
     </div>
   );

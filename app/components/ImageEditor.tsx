@@ -178,7 +178,7 @@ const ImageEditor = ({ image, onChange }: ImageEditorProps) => {
         onChange={handleCropChange}
         minWidth={50}
         minHeight={50}
-        className="max-h-[75vh] h-auto max-w-full w-auto"
+        className="max-h-[70vh] h-auto max-w-full w-auto"
         key={imageEditorKey}
       >
         {/* eslint-disable-next-line jsx-a11y/alt-text */}

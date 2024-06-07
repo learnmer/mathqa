@@ -7,7 +7,7 @@ import {
 } from "@remix-run/react";
 
 import type { LinksFunction } from "@remix-run/node";
-import stylesheet from "~/tailwind.css?url";
+import stylesheet from "~/global.css?url";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
