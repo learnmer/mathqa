@@ -1,4 +1,4 @@
-import { Edit, Loader2, RotateCcwSquare, RotateCwSquare, Send, X } from "lucide-react";
+import { Edit, Image, Loader2, RotateCcwSquare, RotateCwSquare, Send, Upload, X } from "lucide-react";
 
 export const Icons = {
   spinner: Loader2,
@@ -6,5 +6,7 @@ export const Icons = {
   rotateLeft: RotateCcwSquare,
   rotateRight: RotateCwSquare,
   send: Send,
-  x: X
+  x: X,
+  upload: Upload,
+  image: Image
 };

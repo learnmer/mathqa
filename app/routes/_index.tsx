@@ -4,8 +4,6 @@ import { ocr, solve } from "../lib/gemini";
 import { useFetcher } from "@remix-run/react";
 import { Button } from "../../@/components/ui/button";
 import { Icons } from "../../@/components/ui/Icon";
-import { Input } from "../../@/components/ui/input";
-import { Label } from "../../@/components/ui/label";
 import { TypographyH1, TypographyH2 } from "../../@/components/ui/typography";
 // import Markdown from "react-markdown";
 import ImageEditor from "../components/ImageEditor";
@@ -64,6 +62,7 @@ export default function Index() {
   const [reRender, setReRender] = useState(false);
   const [isNewUpload, setIsNewUpload] = useState(false);
   const editorSendButtonRef = useRef<HTMLButtonElement | null>(null);
+  const editorUploadButtonRef = useRef<HTMLButtonElement | null>(null);
   const editorImageDivRef = useRef<HTMLDivElement | null>(null);
 
   const handleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,18 +117,6 @@ export default function Index() {
   return (
     <div className="font-sans m-10 flex flex-col items-center">
       <TypographyH1>Math Problem Solver</TypographyH1>
-      <div className="mt-3 flex flex-col items-center">
-        <div className="grid w-full max-w-sm items-center gap-1.5">
-          <Label htmlFor="picture">Image</Label>
-          <Input
-            type="file"
-            accept="image/*"
-            onChange={handleChange}
-            ref={fileInputRef}
-            name="image"
-          />
-        </div>
-      </div>
       <div className="relative flex justify-center sm:w-[600px] w-full">
         <Textarea
           value={text}
@@ -141,7 +128,8 @@ export default function Index() {
           addheight={
             Math.max(
               editorImageDivRef.current?.clientHeight || 0,
-              editorSendButtonRef.current?.clientHeight || 0
+              editorSendButtonRef.current?.clientHeight || 0,
+              editorUploadButtonRef.current?.clientHeight || 0
             ) + 10
           }
         />
@@ -168,6 +156,29 @@ export default function Index() {
           <Icons.send className="mr-2 h-4 w-4" />
           Ask
         </Button>
+        {!imageDataUrl && (
+          // upload image button
+          <Button
+            variant="outline"
+            size="sm"
+            className="absolute bottom-2 left-2"
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+            ref={editorUploadButtonRef}
+          >
+            <Icons.image className="mr-2 h-4 w-4" />
+            Use Image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleChange}
+              ref={fileInputRef}
+              name="image"
+              className="hidden"
+            />
+          </Button>
+        )}
         {imageDataUrl && (
           <div ref={editorImageDivRef} className="absolute bottom-3 left-3">
             <div className="relative mt-3 w-fit">
@@ -189,7 +200,7 @@ export default function Index() {
               {/** add a button to remove the image */}
               <Button
                 size="icon"
-                className="absolute -top-2 -right-2 h-8 w-8 rounded-full"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                 variant="secondary"
                 onClick={() => {
                   setImageDataUrl(null);
