@@ -70,9 +70,7 @@ export default function calculateNodeHeight(
   }
   height = Math.min(maxHeight, height);
   if (addheight) {
-    console.log(height, addheight);
     height += addheight
-    console.log(height, addheight);
   }
   return [height, rowHeight];
 }

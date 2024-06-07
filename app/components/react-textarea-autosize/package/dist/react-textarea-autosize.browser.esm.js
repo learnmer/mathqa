@@ -82,9 +82,7 @@ function calculateNodeHeight(sizingData, value, minRows, maxRows, addheight) {
   }
   height = Math.min(maxHeight, height);
   if (addheight) {
-    console.log(height, addheight);
     height += addheight;
-    console.log(height, addheight);
   }
   return [height, rowHeight];
 }
@@ -181,7 +179,6 @@ var TextareaAutosize = function TextareaAutosize(_ref, userRef) {
       return;
     }
     measurementsCacheRef.current = nodeSizingData;
-    console.log(addheight, props);
     var _calculateNodeHeight = calculateNodeHeight(nodeSizingData, node.value || node.placeholder || 'x', minRows, maxRows, addheight),
       height = _calculateNodeHeight[0],
       rowHeight = _calculateNodeHeight[1];
