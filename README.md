@@ -1,6 +1,15 @@
-# Welcome to Remix + Vite!
+# Learnmer MathQA
 
-📖 See the [Remix docs](https://remix.run/docs) and the [Remix Vite docs](https://remix.run/docs/en/main/guides/vite) for details on supported features.
+This is a math question answering app built with Remix, React, and Google's Gemini Flash.
+
+https://github.com/learnmer/mathqa/assets/91375035/fa2377bd-bd06-478c-9300-d50fa7f989f3
+
+## Environmental variables
+
+```
+# .env
+GEMINI_API_KEY=<YOUR_API_KEY>
+```
 
 ## Docker
 
@@ -17,7 +26,7 @@ docker run -it -p 3000:3000 -e GEMINI_API_KEY=<YOUR_GEMINI_API_KEY> mathqa
 Run the Vite dev server:
 
 ```shellscript
-npm run dev
+yarn dev
 ```
 
 ## Deployment
@@ -25,13 +34,13 @@ npm run dev
 First, build your app for production:
 
 ```sh
-npm run build
+yarn build
 ```
 
 Then run the app in production mode:
 
 ```sh
-npm start
+yarn start
 ```
 
 Now you'll need to pick a host to deploy it to.
