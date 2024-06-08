@@ -1,4 +1,4 @@
-import { LoaderFunctionArgs } from "@remix-run/node";
+import { LoaderFunctionArgs } from "@vercel/remix";
 import { solveStream } from "../lib/gemini";
 import { eventStream } from "remix-utils/sse/server";
 

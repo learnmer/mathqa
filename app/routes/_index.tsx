@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { type LoaderFunctionArgs, type MetaFunction } from "@remix-run/node";
+import { type LoaderFunctionArgs, type MetaFunction } from "@vercel/remix";
 import { ocr, solve } from "../lib/gemini";
 import { useFetcher } from "@remix-run/react";
 import { Button } from "../../@/components/ui/button";

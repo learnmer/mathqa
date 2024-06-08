@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "remix vite:build",
-    "postinstall": "patch --forward --strip=1 --input remix-run-node-dist-globals.patch || cp remix-run-node-dist-globals.js node_modules/@remix-run/node/dist/globals.js",
+    "postinstall": "cp remix-run-node-dist-globals.js node_modules/@remix-run/node/dist/globals.js",
     "dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "start": "remix-serve ./build/server/index.js",
@@ -21,6 +21,8 @@
     "@remix-run/node": "^2.9.2",
     "@remix-run/react": "^2.9.2",
     "@remix-run/serve": "^2.9.2",
+    "@remix-run/server-runtime": "^2.9.2",
+    "@vercel/remix": "^2.9.2-patch.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "filereader": "^0.10.3",

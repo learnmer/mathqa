@@ -15,7 +15,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 function installGlobals({
   nativeFetch
 } = {}) {
-  if (true) {
+  if (nativeFetch) {
     let {
       File: UndiciFile,
       fetch: undiciFetch,
@@ -43,7 +43,7 @@ function installGlobals({
     global.Headers = RemixHeaders;
     global.Request = RemixRequest;
     global.Response = RemixResponse;
-    global.fetch = RemixFetch;
+    // global.fetch = RemixFetch;
     global.FormData = RemixFormData;
   }
 }
