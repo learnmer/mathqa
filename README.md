@@ -1,6 +1,6 @@
 # Learnmer MathQA
 
-This is a math question answering app built with Remix, React, and Google's Gemini Flash.
+This is a math question answering app, with image support, built with Remix, React, and Google's Gemini Flash.
 
 https://github.com/learnmer/mathqa/assets/91375035/fa2377bd-bd06-478c-9300-d50fa7f989f3
 
