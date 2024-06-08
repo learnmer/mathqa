@@ -2,6 +2,8 @@
 
 This is a math question answering app, with image support, built with Remix, React, and Google's Gemini Flash.
 
+[Demo on Vercel](https://mathqa.vercel.app/)
+
 https://github.com/learnmer/mathqa/assets/91375035/fa2377bd-bd06-478c-9300-d50fa7f989f3
 
 ## Environmental variables
