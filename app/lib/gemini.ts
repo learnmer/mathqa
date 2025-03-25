@@ -11,7 +11,7 @@ export interface ImageGenerativePart {
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-thinking-exp" });
 
 export async function ocr(image: ImageGenerativePart) {
     const result = await model.generateContent(["Only write everything in the image out in human-readable format, following the format as in the image, WITHOUT ANYTHING ELSE. DO NOT PERFORM OCR AND DO NOT WRITE LATEX. Use new lines when needed. Preserve mathematical symbols. Use ^ for power (if any). Remember to use brackets when needed, like in a fraction.", image]);
